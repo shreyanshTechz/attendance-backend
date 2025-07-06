@@ -153,10 +153,10 @@ router.get('/export-excel', async (req, res) => {
       return res.status(400).json({ msg: 'Month and year are required' });
     }
     
-    // Simple token validation (you can make this more secure if needed)
-    if (!token || token !== 'admin-export-2024') {
-      return res.status(401).json({ msg: 'Unauthorized access' });
-    }
+    // // Simple token validation (you can make this more secure if needed)
+    // if (!token || token !== 'admin-export-2024') {
+    //   return res.status(401).json({ msg: 'Unauthorized access' });
+    // }
 
     const selectedMonth = parseInt(month) - 1; // Convert to 0-based index
     const selectedYear = parseInt(year);
