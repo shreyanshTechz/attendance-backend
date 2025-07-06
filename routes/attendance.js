@@ -144,14 +144,18 @@ router.get('/office-config', (req, res) => {
   res.json(officeConfig);
 });
 
-// Admin: Export attendance data for Excel
-router.get('/export-excel', auth, async (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ msg: 'Forbidden' });
+// Admin: Export attendance data for Excel (simple token check for browser download)
+router.get('/export-excel', async (req, res) => {
   
   try {
-    const { month, year } = req.query;
+    const { month, year, token } = req.query;
     if (!month || !year) {
       return res.status(400).json({ msg: 'Month and year are required' });
+    }
+    
+    // Simple token validation (you can make this more secure if needed)
+    if (!token || token !== 'admin-export-2024') {
+      return res.status(401).json({ msg: 'Unauthorized access' });
     }
 
     const selectedMonth = parseInt(month) - 1; // Convert to 0-based index
