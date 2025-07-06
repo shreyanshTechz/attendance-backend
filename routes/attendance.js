@@ -23,9 +23,11 @@ function auth(req, res, next) {
 router.post('/mark', auth, async (req, res) => {
   const { latitude, longitude, ipAddress } = req.body;
   console.log(latitude, longitude, ipAddress);
-  // Office location and IP (should be set in env or config)
-  const officeLat = 26.7428378, officeLng = 83.3797713, allowedIP = '123.123.123.123'; // Example values
-  const isLocationValid = Math.abs(latitude - officeLat) < 20 && Math.abs(longitude - officeLng) < 20;
+  // Office location from environment variables
+  const officeLat = parseFloat(process.env.OFFICE_LATITUDE) || 26.7428378;
+  const officeLng = parseFloat(process.env.OFFICE_LONGITUDE) || 83.3797713;
+  const officeRadius = parseFloat(process.env.OFFICE_RADIUS_KM) || 0.2;
+  const isLocationValid = Math.abs(latitude - officeLat) < officeRadius && Math.abs(longitude - officeLng) < officeRadius;
   // const isIPValid = ipAddress === allowedIP;
   const status = (isLocationValid) ? 'present' : 'unknown';
   try {
@@ -83,8 +85,10 @@ router.get('/user/:userId', auth, async (req, res) => {
 // User login (start office hours)
 router.post('/login', auth, async (req, res) => {
   const { latitude, longitude, ipAddress } = req.body;
-  const officeLat = 26.7428378, officeLng = 83.3797713;
-  const isLocationValid = Math.abs(latitude - officeLat) < 0.2 && Math.abs(longitude - officeLng) < 0.2;
+  const officeLat = parseFloat(process.env.OFFICE_LATITUDE);
+  const officeLng = parseFloat(process.env.OFFICE_LONGITUDE);
+  const officeRadius = parseFloat(process.env.OFFICE_RADIUS_KM);
+  const isLocationValid = Math.abs(latitude - officeLat) < officeRadius && Math.abs(longitude - officeLng) < officeRadius;
   if (!isLocationValid) return res.status(403).json({ msg: 'Not within office location' });
   try {
     const today = new Date();
@@ -112,8 +116,10 @@ router.post('/login', auth, async (req, res) => {
 // User logout (end office hours)
 router.post('/logout', auth, async (req, res) => {
   const { latitude, longitude, ipAddress } = req.body;
-  const officeLat = 26.7428378, officeLng = 83.3797713;
-  const isLocationValid = Math.abs(latitude - officeLat) < 0.2 && Math.abs(longitude - officeLng) < 0.2;
+  const officeLat = parseFloat(process.env.OFFICE_LATITUDE) || 26.7428378;
+  const officeLng = parseFloat(process.env.OFFICE_LONGITUDE) || 83.3797713;
+  const officeRadius = parseFloat(process.env.OFFICE_RADIUS_KM) || 0.2;
+  const isLocationValid = Math.abs(latitude - officeLat) < officeRadius && Math.abs(longitude - officeLng) < officeRadius;
   if (!isLocationValid) return res.status(403).json({ msg: 'Not within office location' });
   try {
     const today = new Date();
@@ -127,6 +133,16 @@ router.post('/logout', auth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ msg: 'Server error' });
   }
+});
+
+// Get office location configuration
+router.get('/office-config', (req, res) => {
+  const officeConfig = {
+    latitude: parseFloat(process.env.OFFICE_LATITUDE) || 26.7428378,
+    longitude: parseFloat(process.env.OFFICE_LONGITUDE) || 83.3797713,
+    radiusKm: parseFloat(process.env.OFFICE_RADIUS_KM) || 0.2
+  };
+  res.json(officeConfig);
 });
 
 export default router; 
