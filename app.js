@@ -21,13 +21,13 @@ app.use(cookieParser());
 app.use(express.static(path.join(path.resolve(), 'public')));
 app.use(cors());
 dotenv.config();
-console.log(process.env.REACT_APP_GOOGLE_CLIENT_ID);
+
 
 mongoose.connect(process.env.REACT_APP_MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-}).then(() => console.log('MongoDB connected'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+}).then(() => console.log('DB connected'))
+  .catch((err) => {});
 
 app.use(passport.initialize());
 

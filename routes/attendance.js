@@ -22,7 +22,6 @@ function auth(req, res, next) {
 // Mark attendance
 router.post('/mark', auth, async (req, res) => {
   const { latitude, longitude, ipAddress } = req.body;
-  console.log(latitude, longitude, ipAddress);
   // Office location from environment variables
   const officeLat = parseFloat(process.env.OFFICE_LATITUDE) || 26.7428378;
   const officeLng = parseFloat(process.env.OFFICE_LONGITUDE) || 83.3797713;
@@ -143,6 +142,121 @@ router.get('/office-config', (req, res) => {
     radiusKm: parseFloat(process.env.OFFICE_RADIUS_KM) || 0.2
   };
   res.json(officeConfig);
+});
+
+// Admin: Export attendance data for Excel
+router.get('/export-excel', auth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ msg: 'Forbidden' });
+  
+  try {
+    const { month, year } = req.query;
+    if (!month || !year) {
+      return res.status(400).json({ msg: 'Month and year are required' });
+    }
+
+    const selectedMonth = parseInt(month) - 1; // Convert to 0-based index
+    const selectedYear = parseInt(year);
+    
+    // Get start and end dates for the month
+    const startDate = new Date(selectedYear, selectedMonth, 1);
+    const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+    
+    // Get all users
+    const users = await User.find({ role: 'employee' }).sort({ name: 1 });
+    
+    // Get all attendance records for the month
+    const attendanceRecords = await Attendance.find({
+      loginTime: { $gte: startDate, $lte: endDate }
+    }).populate('user', 'name email role createdAt');
+    
+    // Create attendance map by user and date
+    const attendanceMap = new Map();
+    attendanceRecords.forEach(record => {
+      const dateKey = new Date(record.loginTime).toISOString().split('T')[0];
+      const userId = record.user._id.toString();
+      
+      if (!attendanceMap.has(userId)) {
+        attendanceMap.set(userId, new Map());
+      }
+      attendanceMap.get(userId).set(dateKey, record);
+    });
+    
+    // Generate CSV data
+    const csvData = [];
+    
+    // Header row
+    const header = ['Name', 'Joined On', 'Role'];
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(selectedYear, selectedMonth, day);
+      const dateStr = date.toISOString().split('T')[0];
+      header.push(`${day}/${selectedMonth + 1}/${selectedYear}`);
+    }
+    csvData.push(header);
+    
+    // Data rows for each user
+    users.forEach(user => {
+      const row = [
+        user.name,
+        user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
+        user.role
+      ];
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(selectedYear, selectedMonth, day);
+        const dateStr = date.toISOString().split('T')[0];
+        const isSunday = date.getDay() === 0;
+        
+        if (isSunday) {
+          row.push('Holiday');
+        } else {
+          const userAttendance = attendanceMap.get(user._id.toString());
+          const dayRecord = userAttendance ? userAttendance.get(dateStr) : null;
+          
+          if (dayRecord) {
+            if (dayRecord.logoutTime) {
+              const duration = dayRecord.duration || 0;
+              const hours = Math.floor(duration / 60);
+              const minutes = duration % 60;
+              if (hours === 0) {
+                row.push(`${minutes}m`);
+              } else if (minutes === 0) {
+                row.push(`${hours}h`);
+              } else {
+                row.push(`${hours}h ${minutes}m`);
+              }
+            } else {
+              row.push('Logged In');
+            }
+          } else {
+            // Check if this is a working day after user joined
+            const joinDate = user.createdAt ? new Date(user.createdAt) : new Date(0);
+            if (date >= joinDate && date <= new Date()) {
+              row.push('Absent');
+            } else {
+              row.push('');
+            }
+          }
+        }
+      }
+      
+      csvData.push(row);
+    });
+    
+    // Convert to CSV string
+    const csvString = csvData.map(row => 
+      row.map(cell => `"${cell}"`).join(',')
+    ).join('\n');
+    
+    // Set response headers for file download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="attendance_${selectedMonth + 1}_${selectedYear}.csv"`);
+    res.send(csvString);
+    
+  } catch (err) {
+    console.error('Error exporting attendance data:', err);
+    res.status(500).json({ msg: 'Server error' });
+  }
 });
 
 export default router; 

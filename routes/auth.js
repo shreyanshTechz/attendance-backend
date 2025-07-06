@@ -77,11 +77,9 @@ router.post('/register', [
     const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
     const role = isAdmin ? 'admin' : 'employee';
     user = new User({ name, email, password: hashed, deviceId, role });
-    console.log(user);
     user.save();
     res.status(200).json({ msg: 'User created successfully' });
   } catch (err) {
-    console.log(err);
     res.status(500).json({ msg: 'Server error' });
   }
 });
@@ -143,7 +141,6 @@ router.post('/send-otp', [
     
     res.json({ msg: 'OTP sent successfully' });
   } catch (err) {
-    console.error('Error sending OTP:', err);
     res.status(500).json({ msg: 'Failed to send OTP' });
   }
 });
@@ -173,7 +170,6 @@ router.post('/reset-password', [
     
     res.json({ msg: 'Password reset successfully' });
   } catch (err) {
-    console.error('Error resetting password:', err);
     res.status(500).json({ msg: 'Failed to reset password' });
   }
 });
@@ -200,7 +196,6 @@ router.post('/send-email-otp', auth, async (req, res) => {
     
     res.json({ msg: 'OTP sent to new email' });
   } catch (err) {
-    console.error('Error sending email OTP:', err);
     res.status(500).json({ msg: 'Failed to send OTP' });
   }
 });
@@ -229,7 +224,6 @@ router.post('/verify-email-otp', auth, [
     
     res.json({ msg: 'Email updated successfully', user: { id: user._id, name: user.name, email: user.email, role: user.role, photo: user.photo } });
   } catch (err) {
-    console.error('Error updating email:', err);
     res.status(500).json({ msg: 'Failed to update email' });
   }
 });

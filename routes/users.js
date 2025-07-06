@@ -20,12 +20,8 @@ function auth(req, res, next) {
 /* GET users listing. */
 router.get('/', auth, async function(req, res) {
   try {
-    console.log(req);
     const employees = await User.find({});
     res.status(200).json(employees);
-    console.log(employees);
-    
-    console.log('employees', employees);
   } catch (err) {
     res.status(500).json({ msg: 'Server error' });
   }
@@ -40,7 +36,6 @@ router.get('/:id', auth, async function(req, res) {
     }
     res.status(200).json(user);
   } catch (err) {
-    console.error('Error fetching user:', err);
     res.status(500).json({ msg: 'Server error' });
   }
 });

@@ -5,7 +5,7 @@ import User from './models/User.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
-console.log("::",process.env.REACT_APP_GOOGLE_CLIENT_ID, process.env.REACT_APP_GOOGLE_CLIENT_SECRET);
+
 
 
 passport.use(new GoogleStrategy({
