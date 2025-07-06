@@ -20,8 +20,21 @@ function auth(req, res, next) {
 /* GET users listing. */
 router.get('/', auth, async function(req, res) {
   try {
-    const employees = await User.find({});
-    res.status(200).json(employees);
+    // Pagination logic
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const total = await User.countDocuments({});
+    const employees = await User.find({})
+      .skip(skip)
+      .limit(limit);
+    res.status(200).json({
+      users: employees,
+      total,
+      hasMore: skip + employees.length < total,
+      page,
+      limit
+    });
   } catch (err) {
     res.status(500).json({ msg: 'Server error' });
   }

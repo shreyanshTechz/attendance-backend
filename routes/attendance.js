@@ -50,8 +50,22 @@ router.post('/mark', auth, async (req, res) => {
 router.get('/all', auth, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ msg: 'Forbidden' });
   try {
-    const records = await Attendance.find().populate('user', 'name email');
-    res.json(records);
+    // Pagination logic
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+    const total = await Attendance.countDocuments();
+    const records = await Attendance.find()
+      .populate('user', 'name email')
+      .skip(skip)
+      .limit(limit);
+    res.json({
+      records,
+      total,
+      hasMore: skip + records.length < total,
+      page,
+      limit
+    });
   } catch (err) {
     res.status(500).json({ msg: 'Server error' });
   }
