@@ -180,7 +180,7 @@ router.get('/export-excel', async (req, res) => {
     const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
     
     // Get all users
-    const users = await User.find({ role: 'employee' }).sort({ name: 1 });
+    const users = await User.find({}).sort({ name: 1 });
     
     // Get all attendance records for the month
     const attendanceRecords = await Attendance.find({
