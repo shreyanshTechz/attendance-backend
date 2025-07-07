@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
+import Attendance from '../models/Attendance.js';
 
 const router = express.Router();
 
@@ -48,6 +49,26 @@ router.get('/:id', auth, async function(req, res) {
       return res.status(404).json({ msg: 'User not found' });
     }
     res.status(200).json(user);
+  } catch (err) {
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// GET all users' latest locations
+router.get('/locations', auth, async function(req, res) {
+  try {
+    const users = await User.find({});
+    const locations = await Promise.all(users.map(async (user) => {
+      const latest = await Attendance.findOne({ user: user._id, 'location.latitude': { $exists: true }, 'location.longitude': { $exists: true } })
+        .sort({ loginTime: -1, timestamp: -1 });
+      return {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        location: latest && latest.location ? latest.location : null,
+      };
+    }));
+    res.status(200).json({ locations });
   } catch (err) {
     res.status(500).json({ msg: 'Server error' });
   }
