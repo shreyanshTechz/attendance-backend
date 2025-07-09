@@ -150,6 +150,8 @@ router.post('/logout', auth, async (req, res) => {
 
 // Get office location configuration
 router.get('/office-config', (req, res) => {
+  console.log(req);
+  
   const officeConfig = {
     latitude: parseFloat(process.env.OFFICE_LATITUDE) || 26.7428378,
     longitude: parseFloat(process.env.OFFICE_LONGITUDE) || 83.3797713,
