@@ -12,6 +12,7 @@ import indexRouter from './routes/index.js';
 import usersRouter from './routes/users.js';
 import authRouter from './routes/auth.js';
 import attendanceRouter from './routes/attendance.js';
+import taskRouter from './routes/task.js';
 
 const app = express();
 app.use(logger('dev'));
@@ -35,5 +36,6 @@ app.use('/', indexRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/attendance', attendanceRouter);
+app.use('/api/tasks', taskRouter);
 
 export default app;

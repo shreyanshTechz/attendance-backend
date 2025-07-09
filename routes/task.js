@@ -40,9 +40,8 @@ router.post('/', async (req, res) => {
     await task.save();
     res.status(201).json(task);
   } catch (err) {
+    console.error('Error creating task:', err);
     res.status(400).json({ error: err.message });
-    console.log(err.message);
-    
   }
 });
 
@@ -52,6 +51,7 @@ router.get('/', async (req, res) => {
     const tasks = await Task.find().sort({ createdAt: -1 });
     res.json(tasks);
   } catch (err) {
+    console.error('Error getting all tasks:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -63,6 +63,7 @@ router.get('/:id', async (req, res) => {
     if (!task) return res.status(404).json({ error: 'Task not found' });
     res.json(task);
   } catch (err) {
+    console.error('Error getting task by ID:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -74,6 +75,7 @@ router.put('/:id', async (req, res) => {
     if (!task) return res.status(404).json({ error: 'Task not found' });
     res.json(task);
   } catch (err) {
+    console.error('Error editing task:', err);
     res.status(400).json({ error: err.message });
   }
 });
