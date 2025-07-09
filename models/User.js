@@ -14,6 +14,11 @@ const userSchema = new mongoose.Schema({
   otp: { type: String },
   otpExpiry: { type: Date },
   isEmailVerified: { type: Boolean, default: false },
+  location: {
+    latitude: { type: Number },
+    longitude: { type: Number },
+    updatedAt: { type: Date }
+  },
 });
 
 const User = mongoose.model('User', userSchema);

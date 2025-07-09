@@ -85,4 +85,22 @@ router.get('/:id', auth, async function(req, res) {
   }
 });
 
+// PUT update user location
+router.put('/:id/location', auth, async function(req, res) {
+  try {
+    const { latitude, longitude } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { location: { latitude, longitude, updatedAt: new Date() } },
+      { new: true }
+    ).select('-password');
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    res.status(200).json({ msg: 'Location updated', user });
+  } catch (err) {
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
 export default router;

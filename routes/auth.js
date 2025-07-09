@@ -111,8 +111,8 @@ router.post('/login', [
       await user.save();
       role = 'admin';
     }
-    const token = jwt.sign({ id: user._id, role: role }, process.env.REACT_APP_JWT_SECRET, { expiresIn: '1d' });
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: role, photo: user.photo } });
+    const token = jwt.sign({ id: user._id, role: role }, process.env.REACT_APP_JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: role, photo: user.photo, createdAt: user.createdAt } });
   } catch (err) {
     res.status(500).json({ msg: 'Server error' });
   }
