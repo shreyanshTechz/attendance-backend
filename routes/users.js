@@ -29,8 +29,19 @@ router.get('/', auth, async function(req, res) {
     const employees = await User.find({})
       .skip(skip)
       .limit(limit);
+    // Get today's date at midnight
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Attach status to each user
+    const usersWithStatus = await Promise.all(employees.map(async (emp) => {
+      const att = await Attendance.findOne({ user: emp._id, loginTime: { $gte: today } }).sort({ loginTime: -1 });
+      let status = 'Absent';
+      if (att && att.loginTime && att.logoutTime) status = 'Present';
+      else if (att && att.loginTime && !att.logoutTime) status = 'In Progress';
+      return { ...emp.toObject(), status };
+    }));
     res.status(200).json({
-      users: employees,
+      users: usersWithStatus,
       total,
       hasMore: skip + employees.length < total,
       page,
