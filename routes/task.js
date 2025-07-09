@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import Task from '../models/Task.js';
+
 const router = express.Router();
-const Task = require('../models/Task');
-const multer = require('multer');
-const path = require('path');
 
 // Multer setup for photo uploads
 const storage = multer.diskStorage({
@@ -167,4 +168,4 @@ router.get('/analytics/summary', async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router; 
