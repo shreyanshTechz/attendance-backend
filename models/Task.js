@@ -40,4 +40,5 @@ const TaskSchema = new mongoose.Schema({
 
 TaskSchema.index({ serviceLocation: '2dsphere' });
 
-module.exports = mongoose.model('Task', TaskSchema); 
+const Task = mongoose.model('Task', TaskSchema);
+export default Task; 
