@@ -52,19 +52,6 @@ router.get('/', auth, async function(req, res) {
   }
 });
 
-/* GET individual user by ID */
-router.get('/:id', auth, async function(req, res) {
-  try {
-    const user = await User.findById(req.params.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ msg: 'User not found' });
-    }
-    res.status(200).json(user);
-  } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
-
 // GET all users' latest locations
 router.get('/locations', auth, async function(req, res) {
   try {
@@ -80,6 +67,19 @@ router.get('/locations', auth, async function(req, res) {
       };
     }));
     res.status(200).json({ locations });
+  } catch (err) {
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+/* GET individual user by ID */
+router.get('/:id', auth, async function(req, res) {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    res.status(200).json(user);
   } catch (err) {
     res.status(500).json({ msg: 'Server error' });
   }
