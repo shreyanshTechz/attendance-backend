@@ -9,6 +9,8 @@ router.post('/', async (req, res) => {
     if (!customerName || !location || !location.latitude || !location.longitude) {
       return res.status(400).json({ error: 'Customer name and location are required.' });
     }
+    // Assume req.user._id is set by authentication middleware
+    const assignedTo = req.user && req.user._id ? req.user._id : undefined;
     const task = new Task({
       customerName,
       customerContact,
@@ -20,6 +22,7 @@ router.post('/', async (req, res) => {
         address: customerAddress,
       },
       status: 'Assigned',
+      assignedTo,
     });
     await task.save();
     res.status(201).json(task);
