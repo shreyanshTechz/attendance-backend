@@ -14,10 +14,10 @@ const TaskSchema = new mongoose.Schema({
   assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   status: {
     type: String,
-    enum: ['Assigned', 'In Progress', 'At Location', 'Photos Uploaded', 'Completed', 'Verified', 'Rejected'],
+    enum: ['Assigned', 'Completed', 'Verified', 'Rejected'],
     default: 'Assigned',
   },
-  photos: [{ type: String }], // URLs or base64
+  photos: [{ type: String }], // base64 strings
   reachedLocation: {
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number] },

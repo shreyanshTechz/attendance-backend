@@ -1,30 +1,17 @@
 import express from 'express';
-import multer from 'multer';
-import path from 'path';
 import Task from '../models/Task.js';
 
 const router = express.Router();
 
-// Multer setup for photo uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../public/images'));
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  },
-});
-const upload = multer({ storage });
-
 // Create a new task
 router.post('/', async (req, res) => {
   try {
-    const { customerName, customerContact, customerAddress, description, location } = req.body;
+    const { customerName, customerContact, customerAddress, description, location, assignedTo } = req.body;
     if (!customerName || !location || !location.latitude || !location.longitude) {
       return res.status(400).json({ error: 'Customer name and location are required.' });
     }
-    // Assume req.user._id is set by authentication middleware
-    const assignedTo = req.user && req.user._id ? req.user._id : undefined;
+    // Use assignedTo from body if provided (admin), else default to current user
+    const assignedToFinal = assignedTo || (req.user && req.user._id ? req.user._id : undefined);
     const task = new Task({
       customerName,
       customerContact,
@@ -36,7 +23,7 @@ router.post('/', async (req, res) => {
         address: customerAddress,
       },
       status: 'Assigned',
-      assignedTo,
+      assignedTo: assignedToFinal,
     });
     await task.save();
     res.status(201).json(task);
@@ -60,7 +47,7 @@ router.get('/', async (req, res) => {
 // Get a task by ID
 router.get('/:id', async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const task = await Task.findById(req.params.id).populate('assignedTo', 'name email');
     if (!task) return res.status(404).json({ error: 'Task not found' });
     res.json(task);
   } catch (err) {
@@ -81,25 +68,26 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Update task status (with optional geo-verification)
+// Update task status (no more in progress, at location, photos uploaded)
 router.patch('/:id/status', async (req, res) => {
   try {
-    const { status, location, comment } = req.body;
+    const { status, comment } = req.body;
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: 'Task not found' });
-    // Geo-verification for 'At Location' status
-    if (status === 'At Location' && location) {
-      const [lng, lat] = task.serviceLocation.coordinates;
-      const dist = Math.sqrt(Math.pow(lat - location.latitude, 2) + Math.pow(lng - location.longitude, 2));
-      if (dist > 0.001) return res.status(400).json({ error: 'Not at assigned location' });
-      task.reachedLocation = {
-        type: 'Point',
-        coordinates: [location.longitude, location.latitude],
-        timestamp: new Date(),
-      };
+    // Only allow valid transitions
+    const validTransitions = {
+      'Assigned': ['Completed'],
+      'Completed': ['Verified', 'Rejected', 'Assigned'],
+      'Verified': ['Assigned'],
+      'Rejected': ['Assigned']
+    };
+    if (!validTransitions[task.status] || !validTransitions[task.status].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status transition' });
     }
     task.status = status;
     task.history.push({ status, timestamp: new Date(), user: req.user?._id, comment });
+    if (status === 'Completed') task.completedAt = new Date();
+    if (status === 'Verified') task.verifiedAt = new Date();
     await task.save();
     res.json(task);
   } catch (err) {
@@ -108,17 +96,22 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
-// Photo upload (must be at location)
-router.post('/:id/photos', upload.array('photos', 10), async (req, res) => {
+// Photo upload (Cloudinary URLs, only triggers Completed if setCompleted=true)
+router.post('/:id/photos', async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: 'Task not found' });
-    // Optionally check geo-location here (req.body.location)
-    if (req.files) {
-      req.files.forEach(f => task.photos.push('/images/' + f.filename));
+    const { photos } = req.body;
+    if (!Array.isArray(photos) || photos.length === 0) {
+      return res.status(400).json({ error: 'No photos provided' });
     }
-    if (task.photos.length >= 5) task.status = 'Photos Uploaded';
-    task.history.push({ status: 'Photos Uploaded', timestamp: new Date(), user: req.user?._id });
+    photos.forEach(url => task.photos.push(url));
+    const setCompleted = req.query.setCompleted === 'true';
+    if (setCompleted && task.photos.length >= 5) {
+      task.status = 'Completed';
+      task.completedAt = new Date();
+      task.history.push({ status: 'Completed', timestamp: new Date(), user: req.user?._id });
+    }
     await task.save();
     res.json(task);
   } catch (err) {
@@ -126,6 +119,20 @@ router.post('/:id/photos', upload.array('photos', 10), async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+// Helper for distance in meters
+function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 // Admin verify/reject
 router.patch('/:id/verify', async (req, res) => {
@@ -150,6 +157,18 @@ router.patch('/:id/verify', async (req, res) => {
     res.json(task);
   } catch (err) {
     console.error('Error verifying/rejecting task:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete a task by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const task = await Task.findByIdAndDelete(req.params.id);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    res.json({ message: 'Task deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting task:', err);
     res.status(400).json({ error: err.message });
   }
 });
